@@ -99,7 +99,7 @@
 </body>
 <script>
 
-    function World(x, y, heights, water, grass)
+    function World(x, y, heights, water, grass, entities)
     {
         this.GameVersion = "v20211021-3d6b9df-sw";
         this.Timestamp = (new Date).toISOString().split(".")[0].replace("T", " ");
@@ -141,7 +141,91 @@
                 }
             }
         },
-            this.Entities = [];
+            this.Entities = entities;
+    }
+
+    function Maple(x, y, z)
+    {
+        return JSON.parse(`{
+			"Id": "${window.URL.createObjectURL(new Blob([])).split('/').pop()}",
+			"Template": "Maple",
+			"Components": {
+				"BlockObject": {
+					"Coordinates": {
+						"X": ${y},
+						"Y": ${x},
+						"Z": ${z}
+					}
+				},
+				"Growable": {
+					"GrowthProgress": 1.0
+				},
+				"CoordinatesOffseter": {
+					"CoordinatesOffset": {
+						"X": 0,
+						"Y": 0
+					}
+				},
+				"NaturalResourceModelRandomizer": {
+					"Rotation": 0,
+					"DiameterScale": 1,
+					"HeightScale": 1
+				},
+				"Yielder:Cuttable": {
+					"Yield": {
+						"Good": {
+							"Id": "Log"
+						},
+						"Amount": 8
+					}
+				},
+				"GatherableYieldGrower": {
+					"GrowthProgress": 0.0
+				}
+			}
+		}`);
+    }
+
+    function BlueberryBush(x, y, z)
+    {
+        return JSON.parse(`{
+			"Id": "${window.URL.createObjectURL(new Blob([])).split('/').pop()}",
+			"Template": "BlueberryBush",
+			"Components": {
+				"BlockObject": {
+					"Coordinates": {
+						"X": ${y},
+						"Y": ${x},
+						"Z": ${z}
+					}
+				},
+				"Growable": {
+					"GrowthProgress": 1.0
+				},
+				"CoordinatesOffseter": {
+					"CoordinatesOffset": {
+						"X": 0,
+						"Y": 0
+					}
+				},
+				"NaturalResourceModelRandomizer": {
+					"Rotation": 0,
+					"DiameterScale": 1,
+					"HeightScale": 1
+				},
+				"Yielder:Gatherable": {
+					"Yield": {
+						"Good": {
+							"Id": "Berries"
+						},
+						"Amount": 3
+					}
+				},
+				"GatherableYieldGrower": {
+					"GrowthProgress": 1
+				}
+			}
+		}`)
     }
 
     var width = 256;
@@ -162,10 +246,11 @@
     var data = [];
     var water = [];
     var grass = [];
+    var entities = [];
 
     function Save() {
 
-        var json = JSON.stringify(new World(width, length, data, water, grass), null, 4);
+        var json = JSON.stringify(new World(width, length, data, water, grass, entities), null, 4);
 
         var blob = new Blob([json], {
 
@@ -290,24 +375,25 @@
     {
 
         data = [];
-        array = [];
         water = [];
         grass = [];
+        entities = [];
 
-        for (x = 0; x < width; x++)
+        array = [];
+
+        for (let x = 0; x < width; x++)
         {
             array[x] = [];
 
-            for (y = 0; y < length; y++) {
+            for (let y = 0; y < length; y++) {
 
                 if (x % 2 == y % 2) {
-                    ctx.fillStyle = "red";
+                    ctx.fillStyle = "magenta";
                 } else {
                     ctx.fillStyle = "black";
                 }
 
                 noise = SmoothNoise2(s * x / 256, s * y / 256);
-
 
                 if (noise < min) {
                     min = noise;
@@ -319,6 +405,8 @@
 
 
                 noise = Math.round(noise * 16);
+
+                //noise = 5;
 
                 if (noise > 5) {
                     //noise = 16;
@@ -332,12 +420,31 @@
                 {
                     if(noise < sea) {
                         water.push(sea - noise);
-                        ctx.fillStyle = `hsl(200,100%,${noise * (100 / 16)}%)`
+                        ctx.fillStyle = `hsl(200, 100%, ${noise * (100 / 16)}%)`
                     }
                     else
                     {
                         water.push(0);
-                        ctx.fillStyle = `hsl(100,100%,${noise * (100 / 16)}%)`
+                        ctx.fillStyle = `hsl(100, 100%, ${noise * (100 / 16)}%)`
+
+                        if(Math.ceil(sea) == noise)
+                        {
+                            if(x % 2 == 0 && y % 2 == 0)
+                            {
+                                entities.push(Maple(x,y,noise));
+                                ctx.fillStyle = `hsl(25, 25%, 25%)`;
+                            }
+                        }
+
+                        if(Math.ceil(sea) + 1 == noise)
+                        {
+                            if(x % 4 == 0 && y % 4 == 0)
+                            {
+                                entities.push(BlueberryBush(x,y,noise));
+                                ctx.fillStyle = `hsl(0, 100%, 25%)`;
+                            }
+                        }
+
                     }
                     grass.push(16);
                 }
@@ -345,8 +452,10 @@
                 {
                     water.push(0);
                     grass.push(0);
-                    ctx.fillStyle = `hsl(25,50%,${noise * (100/16)}%)`
+                    ctx.fillStyle = `hsl(25, 50%, ${noise * (100/16)}%)`
                 }
+
+                //noise = 5;
 
                 data.push(noise);
 
