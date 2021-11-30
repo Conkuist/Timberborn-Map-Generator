@@ -41,7 +41,7 @@
             left: 10px;
             right: 10px;
             top: 10px;
-            width: 355px;
+            width: 440px;
             margin: auto;
             background: #222;
             padding: 10px 0 0 10px;
@@ -82,7 +82,7 @@
 
         .seed
         {
-            width: 160px;
+            width: 245px;
         }
 
         .zoom
@@ -223,6 +223,19 @@
         GenerateMap();
     })
 
+    waterLevel = document.createElement("input");
+    buttons.appendChild(waterLevel);
+    waterLevel.classList.add("size");
+    waterLevel.value = sea
+    waterLevel.type = "number";
+    waterLevel.min = 0;
+    waterLevel.max = 16;
+    waterLevel.step = 0.5;
+    waterLevel.addEventListener("change",function() {
+        sea = parseFloat(this.value);
+        GenerateMap();
+    })
+
     zoomIn = document.createElement("button");
     buttons.appendChild(zoomIn);
     zoomIn.classList.add("zoom");
@@ -293,7 +306,7 @@
                     ctx.fillStyle = "black";
                 }
 
-                noise = SmoothNoise2(s * x / width, s * y / length);
+                noise = SmoothNoise2(s * x / 256, s * y / 256);
 
 
                 if (noise < min) {
