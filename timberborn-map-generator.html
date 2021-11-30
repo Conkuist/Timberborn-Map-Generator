@@ -41,11 +41,12 @@
             left: 10px;
             right: 10px;
             top: 10px;
-            width: 300px;
+            width: 355px;
             margin: auto;
             background: #222;
             padding: 10px 0 0 10px;
             border-radius: 5px;
+            box-sizing: border-box;
         }
         button,
         input
@@ -71,11 +72,17 @@
             width: 125px;
         }
 
-        .size
+        .size,
+        .seed
         {
-            width: 50px;
+            width: 75px;
             background: white;
             color: black;
+        }
+
+        .seed
+        {
+            width: 160px;
         }
 
         .zoom
@@ -86,11 +93,6 @@
             padding: 0;
         }
 
-        .save
-        {
-            float: left;
-            clear: left;
-        }
     </style>
 </head>
 <body>
@@ -152,8 +154,8 @@
 
     random = Math.random();
 
-    //min = 100;
-    //max = -100;
+    min = 100;
+    max = -100;
 
     var data = [];
 
@@ -187,19 +189,35 @@
     generate = document.createElement("button");
     buttons.appendChild(generate);
     generate.innerHTML = "Generate New"
-    generate.addEventListener("click",function(){random = Math.random();GenerateMap();})
+    generate.addEventListener("click",function() {
+        random = Math.random();
+        seed.value = random;
+        GenerateMap();
+    })
 
     mapWidth = document.createElement("input");
     buttons.appendChild(mapWidth);
     mapWidth.classList.add("size");
     mapWidth.value = width
-    mapWidth.addEventListener("change",function(){width = this.value;canvas.width = width * res;GenerateMap()})
+    mapWidth.type = "number";
+    mapWidth.min = 1;
+    mapWidth.max = 1024;
+    mapWidth.addEventListener("change",function() {
+        width = this.value;canvas.width = width * res;
+        GenerateMap();
+    })
 
     mapLength = document.createElement("input");
     buttons.appendChild(mapLength);
     mapLength.classList.add("size");
     mapLength.value = length
-    mapLength.addEventListener("change",function(){length = this.value;canvas.height = length * res;GenerateMap()})
+    mapLength.type = "number";
+    mapLength.min = 1;
+    mapLength.max = 1024;
+    mapLength.addEventListener("change",function() {
+        length = this.value;canvas.height = length * res;
+        GenerateMap();
+    })
 
     zoomIn = document.createElement("button");
     buttons.appendChild(zoomIn);
@@ -210,6 +228,28 @@
         canvas.width = width * res;
         canvas.height = length * res;
         GenerateMap();
+    })
+
+    save = document.createElement("button");
+    buttons.appendChild(save);
+    save.classList.add("save");
+    save.innerHTML = "Save World"
+    save.addEventListener("click",Save)
+
+    seed = document.createElement("input");
+    buttons.appendChild(seed);
+    seed.classList.add("seed");
+    seed.value = random;
+    seed.addEventListener("input",function(){
+        if(!isNaN(Number(this.value))/* && this.value <= 1 && this.value >= 0*/)
+        {
+            random = this.value;
+            GenerateMap();
+        }
+        else
+        {
+            console.log(typeof this.value === 'number',this.value <= 1,this.value >= 0)
+        }
     })
 
     zoomOut = document.createElement("button");
@@ -225,12 +265,6 @@
         }
     })
 
-    save = document.createElement("button");
-    buttons.appendChild(save);
-    save.classList.add("save");
-    save.innerHTML = "Save World"
-    save.addEventListener("click",Save)
-
     ctx = canvas.getContext("2d");
 
     GenerateMap();
@@ -239,12 +273,15 @@
     {
 
         data = [];
+        array = [];
 
         for (x = 0; x < width; x++)
         {
+            array[x] = [];
+
             for (y = 0; y < length; y++)
             {
-                /*
+
                 if (x % 2 == y % 2)
                 {
                     ctx.fillStyle = "red";
@@ -252,11 +289,10 @@
                 else {
                     ctx.fillStyle = "black";
                 }
-                */
 
                 noise = SmoothNoise2(s*x/width,s*y/length);
 
-                /*
+
                 if(noise < min)
                 {
                     min = noise;
@@ -266,9 +302,20 @@
                 {
                     max = noise;
                 }
-                */
+
 
                 noise = Math.round(noise * 16);
+
+                if(noise > 5)
+                {
+                    //noise = 16;
+                    array[x][y] = true;
+                }
+                else
+                {
+                    //noise = 0;
+                    array[x][y] = false;
+                }
 
                 data.push(noise);
 
@@ -278,6 +325,7 @@
             }
         }
 
+        //console.log(array);
         //console.log( data);
         //console.log(data.join(" "));
         //console.log(min,max);
@@ -285,7 +333,7 @@
 
     function Noise(x, y)
     {
-        return fract(Math.sin(x * 100 + y * 6574) * 5647 * random);
+        return fract(Math.sin(x * 100 + y * 6574 * random) * 5647);
     }
 
     function SmoothNoise(x, y)
