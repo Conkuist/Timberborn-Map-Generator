@@ -99,7 +99,7 @@
 </body>
 <script>
 
-    function World(x, y, heights)
+    function World(x, y, heights, water, grass)
     {
         this.GameVersion = "v20211021-3d6b9df-sw";
         this.Timestamp = (new Date).toISOString().split(".")[0].replace("T", " ");
@@ -129,7 +129,7 @@
             },
             WaterMap: {
                 WaterDepths: {
-                    Array: heights.map(e => e = "0").join(" ")
+                    Array: water.join(" ")  //heights.map(e => e = "0").join(" ")
                 },
                 Outflows: {
                     Array: heights.map(e => e = "0:0:0:0").join(" ")
@@ -137,7 +137,7 @@
             },
             SoilMoistureSimulator: {
                 MoistureLevels: {
-                    Array: heights.map(e => e = "0").join(" ")
+                    Array: grass.join(" ")   //heights.map(e => e = "0").join(" ")
                 }
             }
         },
@@ -147,6 +147,8 @@
     var width = 256;
     var length = 256;
     var height = 16;
+
+    var sea = 4.5;
 
     var res = 4;
 
@@ -158,10 +160,12 @@
     max = -100;
 
     var data = [];
+    var water = [];
+    var grass = [];
 
     function Save() {
 
-        var json = JSON.stringify(new World(width,length,data), null, 4);
+        var json = JSON.stringify(new World(width, length, data, water, grass), null, 4);
 
         var blob = new Blob([json], {
 
@@ -274,57 +278,69 @@
 
         data = [];
         array = [];
+        water = [];
+        grass = [];
 
         for (x = 0; x < width; x++)
         {
             array[x] = [];
 
-            for (y = 0; y < length; y++)
-            {
+            for (y = 0; y < length; y++) {
 
-                if (x % 2 == y % 2)
-                {
+                if (x % 2 == y % 2) {
                     ctx.fillStyle = "red";
-                }
-                else {
+                } else {
                     ctx.fillStyle = "black";
                 }
 
-                noise = SmoothNoise2(s*x/width,s*y/length);
+                noise = SmoothNoise2(s * x / width, s * y / length);
 
 
-                if(noise < min)
-                {
+                if (noise < min) {
                     min = noise;
                 }
 
-                if(noise > max)
-                {
+                if (noise > max) {
                     max = noise;
                 }
 
 
                 noise = Math.round(noise * 16);
 
-                if(noise > 5)
-                {
+                if (noise > 5) {
                     //noise = 16;
                     array[x][y] = true;
-                }
-                else
-                {
+                } else {
                     //noise = 0;
                     array[x][y] = false;
                 }
 
-                data.push(noise);
+                if (noise < sea + 2 && sea != 0)
+                {
+                    if(noise < sea) {
+                        water.push(sea - noise);
+                        ctx.fillStyle = `hsl(200,100%,${noise * (100 / 16)}%)`
+                    }
+                    else
+                    {
+                        water.push(0);
+                        ctx.fillStyle = `hsl(100,100%,${noise * (100 / 16)}%)`
+                    }
+                    grass.push(16);
+                }
+                else
+                {
+                    water.push(0);
+                    grass.push(0);
+                    ctx.fillStyle = `hsl(25,50%,${noise * (100/16)}%)`
+                }
 
-                ctx.fillStyle = `hsl(0,0%,${noise * (100/16)}%)`
+                data.push(noise);
 
                 ctx.fillRect(x * res, y * res, res, res);
             }
         }
-
+        console.log(grass);
         //console.log(array);
         //console.log( data);
         //console.log(data.join(" "));
