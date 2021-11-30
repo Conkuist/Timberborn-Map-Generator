@@ -1,0 +1,335 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="author" content="Conkuist">
+    <meta name="description" content="Creates simple heightmaps for Timberborn.">
+
+    <link rel="icon" type="image/svg+xml"
+          href='
+            data:image/svg+xml;charset=utf-8,
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white">
+                <rect width="24" height="24" fill="crimson"/>
+                <path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>
+            </svg>'
+    >
+
+    <title>Map Generator</title>
+
+    <style>
+        body
+        {
+            margin: 0;
+            font-family: sans-serif;
+            background: #333;
+            overflow: hidden;
+        }
+        canvas
+        {
+            vertical-align: middle;
+            margin: auto;
+            display: block;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        .buttons
+        {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            top: 10px;
+            width: 300px;
+            margin: auto;
+            background: #222;
+            padding: 10px 0 0 10px;
+            border-radius: 5px;
+        }
+        button,
+        input
+        {
+            float: left;
+            min-width: 30px;
+            height: 30px;
+            padding: 0 10px;
+            border: none;
+            margin: 0 10px 10px 0;
+            box-sizing: border-box;
+            text-align: center;
+            background: crimson;
+            color: white;
+            font-weight: bold;
+            font-family: sans-serif;
+            outline: none;
+            border-radius: 3px;
+        }
+
+        button
+        {
+            width: 125px;
+        }
+
+        .size
+        {
+            width: 50px;
+            background: white;
+            color: black;
+        }
+
+        .zoom
+        {
+            float: right;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+        }
+
+        .save
+        {
+            float: left;
+            clear: left;
+        }
+    </style>
+</head>
+<body>
+</body>
+<script>
+
+    function World(x, y, heights)
+    {
+        this.GameVersion = "v20211021-3d6b9df-sw";
+        this.Timestamp = (new Date).toISOString().split(".")[0].replace("T", " ");
+        this.Singletons = {
+            MapSize: {
+                Size: {
+                    X: x,
+                    Y: y
+                }
+            },
+            TerrainMap: {
+                Heights: {
+                    Array: heights.join(" ")
+                }
+            },
+            CameraStateRestorer: {
+                SavedCameraState: {
+                    Target: {
+                        X: 0,
+                        Y: 0,
+                        Z: 0
+                    },
+                    ZoomLevel: 0,
+                    HorizontalAngle: 30,
+                    VerticalAngle: 70,
+                }
+            },
+            WaterMap: {
+                WaterDepths: {
+                    Array: heights.map(e => e = "0").join(" ")
+                },
+                Outflows: {
+                    Array: heights.map(e => e = "0:0:0:0").join(" ")
+                }
+            },
+            SoilMoistureSimulator: {
+                MoistureLevels: {
+                    Array: heights.map(e => e = "0").join(" ")
+                }
+            }
+        },
+            this.Entities = [];
+    }
+
+    var width = 256;
+    var length = 256;
+    var height = 16;
+
+    var res = 4;
+
+    var s = 2;
+
+    random = Math.random();
+
+    //min = 100;
+    //max = -100;
+
+    var data = [];
+
+    function Save() {
+
+        var json = JSON.stringify(new World(width,length,data), null, 4);
+
+        var blob = new Blob([json], {
+
+            type: 'application/json'
+
+        });
+
+        var url = URL.createObjectURL(blob);
+        save = document.createElement("a");
+        save.href = url;
+        save.download = "world.json";
+        save.click();
+
+    }
+
+    canvas = document.createElement("canvas")
+    document.body.appendChild(canvas);
+    canvas.width = width * res;
+    canvas.height = length * res;
+
+    buttons = document.createElement("div");
+    buttons.classList.add("buttons");
+    document.body.appendChild(buttons);
+
+    generate = document.createElement("button");
+    buttons.appendChild(generate);
+    generate.innerHTML = "Generate New"
+    generate.addEventListener("click",function(){random = Math.random();GenerateMap();})
+
+    mapWidth = document.createElement("input");
+    buttons.appendChild(mapWidth);
+    mapWidth.classList.add("size");
+    mapWidth.value = width
+    mapWidth.addEventListener("change",function(){width = this.value;canvas.width = width * res;GenerateMap()})
+
+    mapLength = document.createElement("input");
+    buttons.appendChild(mapLength);
+    mapLength.classList.add("size");
+    mapLength.value = length
+    mapLength.addEventListener("change",function(){length = this.value;canvas.height = length * res;GenerateMap()})
+
+    zoomIn = document.createElement("button");
+    buttons.appendChild(zoomIn);
+    zoomIn.classList.add("zoom");
+    zoomIn.innerHTML = "+"
+    zoomIn.addEventListener("click",function() {
+        res++;
+        canvas.width = width * res;
+        canvas.height = length * res;
+        GenerateMap();
+    })
+
+    zoomOut = document.createElement("button");
+    buttons.appendChild(zoomOut);
+    zoomOut.classList.add("zoom");
+    zoomOut.innerHTML = "-"
+    zoomOut.addEventListener("click",function() {
+        if(res > 1) {
+            res--;
+            canvas.width = width * res;
+            canvas.height = length * res;
+            GenerateMap();
+        }
+    })
+
+    save = document.createElement("button");
+    buttons.appendChild(save);
+    save.classList.add("save");
+    save.innerHTML = "Save World"
+    save.addEventListener("click",Save)
+
+    ctx = canvas.getContext("2d");
+
+    GenerateMap();
+
+    function GenerateMap()
+    {
+
+        data = [];
+
+        for (x = 0; x < width; x++)
+        {
+            for (y = 0; y < length; y++)
+            {
+                /*
+                if (x % 2 == y % 2)
+                {
+                    ctx.fillStyle = "red";
+                }
+                else {
+                    ctx.fillStyle = "black";
+                }
+                */
+
+                noise = SmoothNoise2(s*x/width,s*y/length);
+
+                /*
+                if(noise < min)
+                {
+                    min = noise;
+                }
+
+                if(noise > max)
+                {
+                    max = noise;
+                }
+                */
+
+                noise = Math.round(noise * 16);
+
+                data.push(noise);
+
+                ctx.fillStyle = `hsl(0,0%,${noise * (100/16)}%)`
+
+                ctx.fillRect(x * res, y * res, res, res);
+            }
+        }
+
+        //console.log( data);
+        //console.log(data.join(" "));
+        //console.log(min,max);
+    }
+
+    function Noise(x, y)
+    {
+        return fract(Math.sin(x * 100 + y * 6574) * 5647 * random);
+    }
+
+    function SmoothNoise(x, y)
+    {
+        ax = fract(x);
+        ay = fract(y);
+        bx = Math.floor(x);
+        by = Math.floor(y);
+
+        ax = ax * ax * (3 - 2 * ax);
+        ay = ay * ay * (3 - 2 * ay);
+
+        p1 = Noise(bx, by);
+        p2 = Noise(bx + 1, by);
+        m1 = mix(p1, p2, ax);
+
+        p3 = Noise(bx, by + 1)
+        p4 = Noise(bx + 1, by + 1);
+        m2 = mix(p3, p4, ax);
+
+        return mix(m1, m2, ay);
+
+    }
+
+    function SmoothNoise2(x,y)
+    {
+        c = SmoothNoise(x * 4, y * 4);
+        c += SmoothNoise(x * 8, y * 8) * 0.5;
+        //c += SmoothNoise(x * 16, y * 16) * 0.25;
+        //c += SmoothNoise(x * 32, y * 32) * 0.125;
+        //c += SmoothNoise(x * 64, y * 64) * 0.0625;
+        c /= 2;
+        return c;
+    }
+
+    function fract(n)
+    {
+        return n - Math.floor(n);
+    }
+
+    function mix(a, b, c)
+    {
+        return a + c * (b - a);
+    }
+
+</script>
+</html>
