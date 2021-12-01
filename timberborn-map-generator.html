@@ -118,13 +118,13 @@
             CameraStateRestorer: {
                 SavedCameraState: {
                     Target: {
-                        X: 0,
+                        X: 70,
                         Y: 0,
-                        Z: 0
+                        Z: 70
                     },
-                    ZoomLevel: 0,
-                    HorizontalAngle: 30,
-                    VerticalAngle: 70,
+                    ZoomLevel: 8,
+                    HorizontalAngle: 45,
+                    VerticalAngle: 30,
                 }
             },
             WaterMap: {
@@ -162,14 +162,14 @@
 				},
 				"CoordinatesOffseter": {
 					"CoordinatesOffset": {
-						"X": 0,
-						"Y": 0
+						"X": ${(Math.random() / 2) - 0.25},
+						"Y": ${(Math.random() / 2) - 0.25}
 					}
 				},
 				"NaturalResourceModelRandomizer": {
-					"Rotation": 0,
-					"DiameterScale": 1,
-					"HeightScale": 1
+					"Rotation": ${Math.random() * 360},
+					"DiameterScale": ${0.75 + (Math.random() / 2)},
+					"HeightScale": ${0.75 + (Math.random() / 2)}
 				},
 				"Yielder:Cuttable": {
 					"Yield": {
@@ -204,14 +204,14 @@
 				},
 				"CoordinatesOffseter": {
 					"CoordinatesOffset": {
-						"X": 0,
-						"Y": 0
+						"X": ${(Math.random() / 2) - 0.25},
+						"Y": ${(Math.random() / 2) - 0.25}
 					}
 				},
 				"NaturalResourceModelRandomizer": {
-					"Rotation": 0,
-					"DiameterScale": 1,
-					"HeightScale": 1
+					"Rotation": ${Math.random() * 360},
+					"DiameterScale": ${0.75 + (Math.random() / 2)},
+					"HeightScale": ${0.75 + (Math.random() / 2)}
 				},
 				"Yielder:Gatherable": {
 					"Yield": {
@@ -319,16 +319,13 @@
     var length = 256;
     var height = 16;
 
-    var sea = 4.5;
+    var sea = 7.5;
 
     var res = 4;
 
     var s = 2;
 
     random = Math.random();
-
-    min = 100;
-    max = -100;
 
     var data = [];
     var water = [];
@@ -460,6 +457,15 @@
 
     function GenerateMap()
     {
+        map = NoiseMap(width,length);
+
+        trees = NoiseMap(width, length, 10, 4);
+        trees = trees.map(e => e.map(f => f > 0.6 ? true : false));
+
+        berries = NoiseMap(width, length, 10, 4);
+        berries = berries.map(e => e.map(f => f > 0.4 ? false : true));
+
+        console.log(map);
 
         data = [];
         water = [];
@@ -476,16 +482,7 @@
                     ctx.fillStyle = "black";
                 }
 
-                noise = SmoothNoise2(s * x / 256, s * y / 256);
-
-                if (noise < min) {
-                    min = noise;
-                }
-
-                if (noise > max) {
-                    max = noise;
-                }
-
+                noise = map[x][y];
 
                 noise = Math.round(noise * 16);
 
@@ -500,18 +497,15 @@
                         water.push(0);
                         ctx.fillStyle = `hsl(100, 100%, ${noise * (100 / 16)}%)`
 
-                        if(Math.ceil(sea) == noise)
+                        if(Math.ceil(sea) == noise || Math.ceil(sea) + 1 == noise)
                         {
-                            if(x % 2 == 0 && y % 2 == 0)
+                            if(/*x % 2 == 0 && y % 2 == 0*/ trees[x][y])
                             {
                                 entities.push(Maple(x,y,noise));
                                 ctx.fillStyle = `hsl(25, 25%, 25%)`;
                             }
-                        }
 
-                        if(Math.ceil(sea) + 1 == noise)
-                        {
-                            if(x % 4 == 0 && y % 4 == 0)
+                            if(/*x % 4 == 0 && y % 4 == 0*/ berries[x][y])
                             {
                                 entities.push(BlueberryBush(x,y,noise));
                                 ctx.fillStyle = `hsl(0, 100%, 25%)`;
@@ -519,7 +513,9 @@
                         }
 
                     }
+
                     grass.push(16);
+
                 }
                 else if(noise > Math.ceil(sea) + 1)
                 {
@@ -539,17 +535,12 @@
                     ctx.fillStyle = `hsl(25, 50%, ${noise * (100/16)}%)`
                 }
 
-                //noise = 5;
-
                 data.push(noise);
 
                 ctx.fillRect(x * res, (length - 1 - y) * res, res, res);
             }
         }
-        console.log(grass);
-        //console.log( data);
-        //console.log(data.join(" "));
-        //console.log(min,max);
+
     }
 
     function Noise(x, y)
@@ -579,15 +570,69 @@
 
     }
 
-    function SmoothNoise2(x,y)
-    {
-        c = SmoothNoise(x * 4, y * 4);
-        c += SmoothNoise(x * 8, y * 8) * 0.5;
-        //c += SmoothNoise(x * 16, y * 16) * 0.25;
-        //c += SmoothNoise(x * 32, y * 32) * 0.125;
-        //c += SmoothNoise(x * 64, y * 64) * 0.0625;
-        c /= 2;
-        return c;
+    function NoiseMap(width, height, scale, octaves) {
+
+        var noiseMap = [];
+
+        var max = -100;
+        var min = 100
+
+        if(!(scale && scale != 0))
+        {
+            scale = 40; // not 0
+        }
+        if(!(octaves && octaves > 0))
+        {
+            octaves = 2;
+        }
+
+        const persitance = 0.5; // smaller than 1
+        const lacunarity = 2; // larger than 1
+
+        for (let x = 0; x < width; x++)
+        {
+
+            noiseMap[x] = [];
+
+            for (let y = 0; y < height; y++)
+            {
+
+                var amplitude = 1;
+                var frequency = 1;
+                var noiseHeight = 1;
+
+                for (let i = 0; i < octaves; i++)
+                {
+
+                    const sx = x / scale * frequency;
+                    const sy = y / scale * frequency;
+
+                    const noiseValue = SmoothNoise(sx, sy);
+                    noiseHeight += noiseValue * amplitude;
+
+                    amplitude *= persitance;
+                    frequency *= lacunarity;
+
+                }
+
+                if(noiseHeight < min)
+                {
+                    min = noiseHeight;
+                }
+
+                if(noiseHeight > max)
+                {
+                    max = noiseHeight;
+                }
+
+                noiseMap[x][y] = noiseHeight;
+
+            }
+        }
+
+        noiseMap = noiseMap.map(e => e.map(f => (f - min) / (max - min)));
+
+        return noiseMap;
     }
 
     function fract(n)
