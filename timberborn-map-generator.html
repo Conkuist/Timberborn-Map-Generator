@@ -147,13 +147,13 @@
     function Maple(x, y, z)
     {
         return JSON.parse(`{
-			"Id": "${window.URL.createObjectURL(new Blob([])).split('/').pop()}",
+			"Id": "${UUID()}",
 			"Template": "Maple",
 			"Components": {
 				"BlockObject": {
 					"Coordinates": {
-						"X": ${y},
-						"Y": ${x},
+						"X": ${x},
+						"Y": ${y},
 						"Z": ${z}
 					}
 				},
@@ -189,13 +189,13 @@
     function BlueberryBush(x, y, z)
     {
         return JSON.parse(`{
-			"Id": "${window.URL.createObjectURL(new Blob([])).split('/').pop()}",
+			"Id": "${UUID()}",
 			"Template": "BlueberryBush",
 			"Components": {
 				"BlockObject": {
 					"Coordinates": {
-						"X": ${y},
-						"Y": ${x},
+						"X": ${x},
+						"Y": ${y},
 						"Z": ${z}
 					}
 				},
@@ -226,6 +226,93 @@
 				}
 			}
 		}`)
+    }
+
+    function RuinColumn(x, y, z, h, v) {
+
+        switch (h) {
+            case 1:
+                height = 1;
+                break;
+            case 2:
+                height = 2;
+                break;
+            case 3:
+                height = 3;
+                break;
+            case 4:
+                height = 4;
+                break;
+            case 5:
+                height = 5;
+                break;
+            case 6:
+                height = 6;
+                break;
+            case 7:
+                height = 7;
+                break;
+            case 8:
+                height = 8;
+                break;
+            default:
+                height = 1;
+                break;
+        }
+
+        switch (v) {
+            case 0:
+                variant = "A";
+                break;
+            case 1:
+                variant = "B";
+                break;
+            case 2:
+                variant = "C";
+                break;
+            case 3:
+                variant = "D";
+                break;
+            case 4:
+                variant = "E";
+                break;
+            default:
+                variant = "A";
+                break;
+        }
+
+        return JSON.parse(`{
+			"Id": "${UUID()}",
+			"Template": "RuinColumnH${height}",
+			"Components": {
+				"BlockObject": {
+					"Coordinates": {
+						"X": ${x},
+						"Y": ${y},
+						"Z": ${z}
+					}
+				},
+				"Yielder:Ruin": {
+					"Yield": {
+						"Good": {
+							"Id": "ScrapMetal"
+						},
+						"Amount": ${height * 15}
+					}
+				},
+				"RuinModels": {
+					"VariantId": "${variant}"
+				},
+                "DryObject": {
+                    "IsDry": true
+                }
+			}
+		}`);
+    }
+
+    function UUID()
+    {
+        return window.URL.createObjectURL(new Blob([])).split('/').pop();
     }
 
     var width = 256;
@@ -379,13 +466,9 @@
         grass = [];
         entities = [];
 
-        array = [];
-
-        for (let x = 0; x < width; x++)
+        for (let y = 0; y < length; y++)
         {
-            array[x] = [];
-
-            for (let y = 0; y < length; y++) {
+            for (let x = 0; x < width; x++) {
 
                 if (x % 2 == y % 2) {
                     ctx.fillStyle = "magenta";
@@ -405,16 +488,6 @@
 
 
                 noise = Math.round(noise * 16);
-
-                //noise = 5;
-
-                if (noise > 5) {
-                    //noise = 16;
-                    array[x][y] = true;
-                } else {
-                    //noise = 0;
-                    array[x][y] = false;
-                }
 
                 if (noise < sea + 2 && sea != 0)
                 {
@@ -448,6 +521,17 @@
                     }
                     grass.push(16);
                 }
+                else if(noise > Math.ceil(sea) + 1)
+                {
+                    water.push(0);
+                    grass.push(0);
+                    ctx.fillStyle = `hsl(25, 50%, ${noise * (100/16)}%)`
+                    if(Math.floor(x / 4) % 16 == 0 && Math.floor(y / 4) % 16 == 0)
+                    {
+                        entities.push(RuinColumn(x,y,noise,Math.floor(Math.random() * 8) + 1,Math.floor(Math.random() * 5)));
+                        ctx.fillStyle = `hsl(0, 50%, 50%)`
+                    }
+                }
                 else
                 {
                     water.push(0);
@@ -459,11 +543,10 @@
 
                 data.push(noise);
 
-                ctx.fillRect(x * res, y * res, res, res);
+                ctx.fillRect(x * res, (length - 1 - y) * res, res, res);
             }
         }
         console.log(grass);
-        //console.log(array);
         //console.log( data);
         //console.log(data.join(" "));
         //console.log(min,max);
