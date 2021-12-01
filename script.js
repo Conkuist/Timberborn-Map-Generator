@@ -218,9 +218,9 @@ var width = 256;
 var length = 256;
 var height = 16;
 
-var sea = 7.5;
+var waterLevel = 7.5;
 
-var res = 4;
+var res = 2;
 
 var s = 2;
 
@@ -291,16 +291,16 @@ mapLength.addEventListener("change",function() {
     GenerateMap();
 })
 
-waterLevel = document.createElement("input");
-buttons.appendChild(waterLevel);
-waterLevel.classList.add("size");
-waterLevel.value = sea
-waterLevel.type = "number";
-waterLevel.min = 0;
-waterLevel.max = 16;
-waterLevel.step = 0.5;
-waterLevel.addEventListener("change",function() {
-    sea = parseFloat(this.value);
+mapWaterLevel = document.createElement("input");
+buttons.appendChild(mapWaterLevel);
+mapWaterLevel.classList.add("size");
+mapWaterLevel.value = waterLevel
+mapWaterLevel.type = "number";
+mapWaterLevel.min = 0;
+mapWaterLevel.max = 16;
+mapWaterLevel.step = 0.5;
+mapWaterLevel.addEventListener("change",function() {
+    waterLevel = parseFloat(this.value);
     GenerateMap();
 })
 
@@ -358,11 +358,11 @@ function GenerateMap()
 {
     map = NoiseMap(width,length);
 
-    trees = NoiseMap(width, length, 10, 4);
-    trees = trees.map(e => e.map(f => f > 0.6 ? true : false));
+    plants = NoiseMap(width, length, 10, 4);
 
-    berries = NoiseMap(width, length, 10, 4);
-    berries = berries.map(e => e.map(f => f > 0.4 ? false : true));
+    trees = plants.map(e => e.map(f => f > 0.6 ? true : false));
+    berries = plants.map(e => e.map(f => f > 0.4 ? false : true));
+    ruins =  plants.map(e => e.map(f => f > 0.2 ? false : true));
 
     data = [];
     water = [];
@@ -381,58 +381,60 @@ function GenerateMap()
 
             noise = map[x][y];
 
-            noise = Math.round(noise * 16);
+            mapHeight = Math.round(noise * 16);
 
-            if (noise < sea + 2 && sea != 0)
+            data[y * length + x] = mapHeight;
+
+            //Set Water Depth
+            if(mapHeight < waterLevel)
             {
-                if(noise < sea) {
-                    water.push(sea - noise);
-                    ctx.fillStyle = `hsl(200, 100%, ${noise * (100 / 16)}%)`
-                }
-                else
-                {
-                    water.push(0);
-                    ctx.fillStyle = `hsl(100, 100%, ${noise * (100 / 16)}%)`
-
-                    if(Math.ceil(sea) == noise || Math.ceil(sea) + 1 == noise)
-                    {
-                        if(/*x % 2 == 0 && y % 2 == 0*/ trees[x][y])
-                        {
-                            entities.push(Maple(x,y,noise));
-                            ctx.fillStyle = `hsl(25, 25%, 25%)`;
-                        }
-
-                        if(/*x % 4 == 0 && y % 4 == 0*/ berries[x][y])
-                        {
-                            entities.push(BlueberryBush(x,y,noise));
-                            ctx.fillStyle = `hsl(0, 100%, 25%)`;
-                        }
-                    }
-
-                }
-
-                grass.push(16);
-
-            }
-            else if(noise > Math.ceil(sea) + 1)
-            {
-                water.push(0);
-                grass.push(0);
-                ctx.fillStyle = `hsl(25, 50%, ${noise * (100/16)}%)`
-                if(Math.floor(x / 4) % 16 == 0 && Math.floor(y / 4) % 16 == 0)
-                {
-                    entities.push(RuinColumn(x,y,noise,Math.floor(Math.random() * 8) + 1,Math.floor(Math.random() * 5)));
-                    ctx.fillStyle = `hsl(0, 50%, 50%)`
-                }
+                water[y * length + x] = waterLevel - mapHeight;
+                ctx.fillStyle = `hsl(200, 100%, ${((16 - waterLevel + mapHeight) / 2) * (100 / 16)}%)`
             }
             else
             {
-                water.push(0);
-                grass.push(0);
-                ctx.fillStyle = `hsl(25, 50%, ${noise * (100/16)}%)`
+                water[y * length + x] = 0;
             }
 
-            data.push(noise);
+            //Set Moisture Level
+            if(mapHeight < Math.ceil(waterLevel) + 2 && waterLevel != 0)
+            {
+                grass[y * length + x] = 16;
+            }
+            else
+            {
+                grass[y * length + x] = 0;
+            }
+
+            //Place Trees and Bushes
+            if(mapHeight >= waterLevel && mapHeight < Math.ceil(waterLevel) + 2 && waterLevel != 0)
+            {
+                ctx.fillStyle = `hsl(75, 100%, ${mapHeight * (100 / 16)}%)` //`hsl(100, 100%, ${(4 + mapHeight / 2) * (100 / 16)}%)`
+
+                if(trees[x][y])
+                {
+                    entities.push(Maple(x, y, mapHeight));
+                    ctx.fillStyle = `hsl(25, 25%, 25%)`;
+                }
+
+                if(berries[x][y])
+                {
+                    entities.push(BlueberryBush(x, y, mapHeight));
+                    ctx.fillStyle = `hsl(260, 100%, 25%)`;
+                }
+            }
+
+            //Place Ruins
+            if(mapHeight >= Math.ceil(waterLevel) + 2 || waterLevel == 0)
+            {
+                ctx.fillStyle = `hsl(25, 50%, ${mapHeight * (100/16)}%)` //`hsl(25, 25%, ${(4 + mapHeight / 2) * (100/16)}%)`
+
+                if(/*Math.floor((x + 1) / 4) % 16 == 0 && Math.floor((y + 2) / 4) % 16 == 0*/ruins[x][y])
+                {
+                    entities.push(RuinColumn(x, y, mapHeight, Math.floor(Math.random() * 8) + 1, Math.floor(Math.random() * 5)));
+                    ctx.fillStyle = `hsl(0, 50%, 50%)`
+                }
+            }
 
             ctx.fillRect(x * res, (length - 1 - y) * res, res, res);
         }
