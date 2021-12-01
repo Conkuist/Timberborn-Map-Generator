@@ -1,0 +1,75 @@
+body
+{
+    margin: 0;
+    font-family: sans-serif;
+    background: #333;
+    overflow: hidden;
+}
+canvas
+{
+    vertical-align: middle;
+    margin: auto;
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.buttons
+{
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 10px;
+    width: 440px;
+    margin: auto;
+    background: #222;
+    padding: 10px 0 0 10px;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+button,
+input
+{
+    float: left;
+    min-width: 30px;
+    height: 30px;
+    padding: 0 10px;
+    border: none;
+    margin: 0 10px 10px 0;
+    box-sizing: border-box;
+    text-align: center;
+    background: crimson;
+    color: white;
+    font-weight: bold;
+    font-family: sans-serif;
+    outline: none;
+    border-radius: 3px;
+}
+
+button
+{
+    width: 125px;
+}
+
+.size,
+.seed
+{
+    width: 75px;
+    background: white;
+    color: black;
+}
+
+.seed
+{
+    width: 245px;
+}
+
+.zoom
+{
+    float: right;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+}
